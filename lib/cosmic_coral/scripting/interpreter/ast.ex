@@ -5,6 +5,8 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
 
   alias CosmicCoral.Scripting.Interpreter.Script
 
+  @eq_op %{"+=": :+, "-=": :-, "*=": :*, "/=": :/}
+
   @doc """
   Convert an AST into a script structure with its bytecode.
   """
@@ -109,6 +111,16 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
   defp read_ast(code, {:=, variable, value}) do
     code
     |> read_ast(value)
+    |> add({:store, variable})
+  end
+
+  defp read_ast(code, {eq_op, variable, value}) when eq_op in [:"+=", :"-=", :"*=", :"/="] do
+    op = Map.get(@eq_op, eq_op)
+
+    code
+    |> add({:read, variable})
+    |> read_ast(value)
+    |> add(op)
     |> add({:store, variable})
   end
 

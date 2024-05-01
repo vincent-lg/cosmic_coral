@@ -20,24 +20,7 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
 
   import NimbleParsec
   import CosmicCoral.Scripting.Parser.Constants, only: [isolate: 1, isolate: 2]
-
-  plus = ascii_char([?+]) |> replace(:+) |> label("+") |> isolate(check: false)
-  minus = ascii_char([?-]) |> replace(:-) |> label("-") |> isolate(check: false)
-  mul = ascii_char([?*]) |> replace(:*) |> label("*") |> isolate(check: false)
-  div = ascii_char([?/]) |> replace(:/) |> label("/") |> isolate(check: false)
-
-  lparen = ascii_char([?(]) |> label("(") |> isolate(check: false)
-  rparen = ascii_char([?)]) |> label(")") |> isolate()
-  lbracket = ascii_char([?[]) |> label("[") |> isolate(check: false)
-  rbracket = ascii_char([?]]) |> label("]") |> isolate()
-  comma = string(",") |> label(",") |> isolate()
-
-  gt = string(">") |> replace(:>) |> isolate(check: false)
-  gte = string(">=") |> replace(:>=) |> isolate(check: false)
-  lt = string("<") |> replace(:<) |> isolate(check: false)
-  lte = string("<=") |> replace(:<=) |> isolate(check: false)
-  eq = string("==") |> replace(:==) |> isolate(check: false)
-  neq = string("!=") |> replace(:!=) |> isolate(check: false)
+  import CosmicCoral.Scripting.Parser.Operator
 
   not_ = string("not") |> isolate()
   and_ = string("and") |> replace(:and) |> isolate(space: true)
@@ -54,17 +37,17 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
   end
 
   value_list =
-    ignore(lbracket)
+    ignore(lbracket())
     |> concat(
       parsec(:expr)
       |> repeat(
-        ignore(comma)
+        ignore(comma())
         |> parsec(:expr)
       )
-      |> optional(ignore(comma))
+      |> optional(ignore(comma()))
       |> tag(:list)
     )
-    |> ignore(rbracket)
+    |> ignore(rbracket())
     |> label("list")
     |> reduce(:reduce_list)
 
@@ -73,7 +56,7 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
   defcombinatorp(
     :nested,
     choice([
-      ignore(lparen) |> parsec(:expr) |> ignore(rparen),
+      ignore(lparen()) |> parsec(:expr) |> ignore(rparen()),
       value_list,
       parsec({CosmicCoral.Scripting.Parser.Value, :value})
     ])
@@ -112,7 +95,7 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
     :term_eq,
     parsec(:term_cmp)
     |> repeat(
-      choice([eq, neq])
+      choice([eq(), neq()])
       |> parsec(:term_cmp)
     )
     |> reduce(:fold_infixl)
@@ -122,7 +105,7 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
     :term_cmp,
     parsec(:term_plus)
     |> repeat(
-      choice([gte, lte, gt, lt])
+      choice([gte(), lte(), gt(), lt()])
       |> parsec(:term_plus)
     )
     |> reduce(:fold_infixl)
@@ -132,7 +115,7 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
     :term_plus,
     parsec(:term_mul)
     |> repeat(
-      choice([plus, minus])
+      choice([plus(), minus()])
       |> parsec(:term_mul)
     )
     |> reduce(:fold_infixl)
@@ -142,7 +125,7 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
     :term_mul,
     parsec(:nested)
     |> repeat(
-      choice([mul, div])
+      choice([mul(), div()])
       |> parsec(:nested)
     )
     |> reduce(:fold_infixl)

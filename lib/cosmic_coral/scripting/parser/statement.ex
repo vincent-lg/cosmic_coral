@@ -9,10 +9,11 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
 
   import NimbleParsec
   import CosmicCoral.Scripting.Parser.Constants, only: [id: 0, isolate: 1, isolate: 2]
+  import CosmicCoral.Scripting.Parser.Operator
 
   newline = ascii_char([?\n]) |> replace(:line) |> label("newline") |> isolate(check: false)
 
-  equal = ascii_char([?=]) |> label("=") |> isolate(check: false)
+  equal = string("=") |> label("=") |> replace(:=) |> isolate(check: false)
   colon = ascii_char([?:]) |> label(":") |> replace(:":") |> isolate(check: false)
   if_kw = string("if") |> label("if") |> replace(:if) |> isolate(space: true)
   else_kw = string("else") |> label("else") |> replace(:else) |> isolate()
@@ -24,12 +25,14 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
 
   assignment =
     id()
-    |> concat(ignore(equal))
-    |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+    |> concat(
+      choice([equal, plus_eq(), minus_eq(), mul_eq(), div_eq()])
+      |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+    )
     |> reduce(:reduce_assign)
     |> label("assignment")
 
-  defp reduce_assign([{:var, var}, value]), do: {:=, var, value}
+  defp reduce_assign([{:var, var}, opeq, value]), do: {opeq, var, value}
 
   if_stmt =
     if_kw

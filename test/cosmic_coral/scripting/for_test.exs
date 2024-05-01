@@ -9,12 +9,11 @@ defmodule CosmicCoral.Scripting.ForTest do
     script = run("""
     sum = 0
     for number in [1, 2, 3, 4, 5]:
-      sum = sum + number
+      sum += number
     done
     """)
     assert script.variables["sum"] == 15
   end
-
 
   test "sums integers in nested loops" do
     script = run("""
@@ -22,7 +21,7 @@ defmodule CosmicCoral.Scripting.ForTest do
     to_add = [[1, 2, 3], [4, 5], [6, 7, 4 * 2]]
     for sub_add in to_add:
       for number in sub_add:
-        sum = sum + number
+        sum += number
       done
     done
     """, true)
