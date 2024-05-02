@@ -90,13 +90,25 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> ignore(repeat(newline))
   )
 
+  raw_value =
+    parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+    |> choice([
+      eos(),
+      lookahead(string("\n"))
+    ])
+    |> tag(:raw)
+    |> reduce(:reduce_raw)
+
+  def reduce_raw([{:raw, [expr]}]), do: {:raw, expr}
+
   defcombinatorp(
     :statement,
     choice([
       assignment,
       if_stmt,
       while_stmt,
-      for_stmt
+      for_stmt,
+      raw_value
     ])
   )
 

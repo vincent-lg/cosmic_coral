@@ -177,6 +177,20 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> replace({:unset, end_block}, fn code -> {:iter, length_code(code)} end)
   end
 
+  defp read_ast(code, {:method, object, name, args}) do
+    code
+    |> add({:read, object})
+    |> read_asts(args)
+    |> read_ast(name)
+    |> add({:method, length(args)})
+  end
+
+  defp read_ast(code, {:raw, expr}) do
+    code
+    |> read_ast(expr)
+    |> add(:pop)
+  end
+
   defp read_ast(_code, unknown) do
     raise "unknown AST portion: #{inspect(unknown)}"
   end

@@ -43,7 +43,7 @@ defmodule CosmicCoral.Scripting.Parser.Operator do
   def rparen do
     ascii_char([?)])
     |> label(")")
-    |> isolate()
+    |> isolate(check: false)
   end
 
   def lbracket do
@@ -121,6 +121,13 @@ defmodule CosmicCoral.Scripting.Parser.Operator do
   def div_eq do
     string("/=")
     |> replace(:"/=")
+    |> isolate(check: false)
+  end
+
+  def dot do
+    string(".")
+    |> replace(:.)
+    |> label("dot")
     |> isolate(check: false)
   end
 end

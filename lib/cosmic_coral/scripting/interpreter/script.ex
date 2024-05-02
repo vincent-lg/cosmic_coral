@@ -11,6 +11,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   defstruct [:bytecode, cursor: 0, stack: [], references: %{}, variables: %{}, debugger: nil]
 
   alias CosmicCoral.Scripting.Interpreter.{Debugger, Iterator, Script}
+  alias CosmicCoral.Scripting.Object
 
   @typedoc "a script with bytecode"
   @type t() :: %Script{
@@ -44,6 +45,16 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     references = Map.put(references, reference, value)
     %{script | references: references}
     |> debug("ref #{inspect(reference)} set to #{inspect(value)}")
+  end
+
+  @doc """
+  Gets the value of a variable.
+
+  If the variable is a reference, recursively search for a value.
+  """
+  def get_variable_value(script, name) do
+    Map.get(script.variables, name)
+    |> reference_to_value(script)
   end
 
   @doc """
@@ -107,14 +118,18 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
 
   defp handle(script, {:list, len}) do
     {script, values} =
-      Enum.reduce(1..len, {script, []}, fn _, {script, values} ->
-        {script, {value, reference}} = get_stack(script, :reference)
+      if len > 0 do
+        Enum.reduce(1..len, {script, []}, fn _, {script, values} ->
+          {script, {value, reference}} = get_stack(script, :reference)
 
-        case reference do
-          nil -> {script, [value | values]}
-          _ -> {script, [reference | values]}
-        end
-      end)
+          case reference do
+            nil -> {script, [value | values]}
+            _ -> {script, [reference | values]}
+          end
+        end)
+      else
+        {script, []}
+      end
 
     script
     |> put_stack(values)
@@ -220,6 +235,32 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     end
   end
 
+  defp handle(script, {:method, len}) do
+    {script, name} = get_stack(script)
+
+    {script, args} =
+      Enum.reduce(1..len, {script, []}, fn _, {script, values} ->
+        {script, group} = get_stack(script, :reference)
+
+        {script, [group | values]}
+      end)
+
+    {script, {object, reference}} = get_stack(script, :reference)
+
+    namespace =
+      case object do
+        list when is_list(list) -> Object.List
+      end
+
+    Object.call(namespace, name, script, object, reference, args)
+    |> put_stack(true)
+  end
+
+  defp handle(script, :pop) do
+    {script, _} = get_stack(script)
+
+    script
+  end
   defp handle(_script, unknown) do
     raise "unknown bytecode: #{inspect(unknown)}"
   end
@@ -281,6 +322,17 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   defp references?(value) when is_boolean(value), do: false
   defp references?(value) when is_binary(value), do: false
   defp references?(_value), do: true
+
+  defp reference_to_value(value, script) when is_reference(value) do
+    Map.get(script.references, value)
+    |> reference_to_value(script)
+  end
+
+  defp reference_to_value(value, script) when is_list(value) do
+    Enum.map(value, fn element -> reference_to_value(element, script) end)
+  end
+
+  defp reference_to_value(value, _script), do: value
 
   defp debug(%{debugger: %Debugger{} = debugger} = script, text) do
     debugger = Debugger.add(debugger, script.cursor - 1, text)

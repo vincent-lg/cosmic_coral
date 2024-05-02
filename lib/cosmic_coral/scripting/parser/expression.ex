@@ -39,12 +39,14 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
   value_list =
     ignore(lbracket())
     |> concat(
-      parsec(:expr)
-      |> repeat(
-        ignore(comma())
-        |> parsec(:expr)
+      optional(
+        parsec(:expr)
+        |> repeat(
+          ignore(comma())
+          |> parsec(:expr)
+        )
+        |> optional(ignore(comma()))
       )
-      |> optional(ignore(comma()))
       |> tag(:list)
     )
     |> ignore(rbracket())

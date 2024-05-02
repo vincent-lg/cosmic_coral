@@ -24,6 +24,7 @@ defmodule CosmicCoral.Scripting.Parser.Value do
   import NimbleParsec
 
   import CosmicCoral.Scripting.Parser.Constants, only: [id: 0, isolate: 1]
+  import CosmicCoral.Scripting.Parser.Operator
 
   globals =
     choice([
@@ -96,8 +97,28 @@ defmodule CosmicCoral.Scripting.Parser.Value do
     ])
     |> label("variable")
 
+  method =
+    id()
+    |> ignore(dot())
+    |> concat(id())
+    |> ignore(lparen())
+    |> optional(
+      parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+      |> repeat(
+        ignore(comma())
+        |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+      )
+      |> tag(:args)
+    )
+    |> ignore(rparen())
+    |> tag(:method)
+    |> reduce(:reduce_method)
+
+  def reduce_method([{:method, [{:var, on}, {:var, name}, {:args, expressions}]}]) do
+    {:method, on, name, expressions}
+  end
   defcombinator(
     :value,
-    choice([globals, number, id_value, str])
+    choice([globals, number, method, id_value, str])
   )
 end

@@ -5,7 +5,7 @@ defmodule CosmicCoral.ScriptingCase do
     quote do
       import CosmicCoral.ScriptingCase
       import CosmicCoral.Scripting
-      alias CosmicCoral.Scripting.Interpreter.Debugger
+      alias CosmicCoral.Scripting.Interpreter.{Debugger, Script}
     end
   end
 
