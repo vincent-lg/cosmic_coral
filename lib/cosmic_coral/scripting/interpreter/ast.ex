@@ -108,37 +108,41 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     end)
   end
 
-  defp read_ast(code, {:=, variable, value}) do
+  defp read_ast(code, {:=, variable, value, {line, _}}) do
     code
+    |> add({:line, line})
     |> read_ast(value)
     |> add({:store, variable})
   end
 
-  defp read_ast(code, {eq_op, variable, value}) when eq_op in [:"+=", :"-=", :"*=", :"/="] do
+  defp read_ast(code, {eq_op, variable, value, {line, _}}) when eq_op in [:"+=", :"-=", :"*=", :"/="] do
     op = Map.get(@eq_op, eq_op)
 
     code
+    |> add({:line, line})
     |> add({:read, variable})
     |> read_ast(value)
     |> add(op)
     |> add({:store, variable})
   end
 
-  defp read_ast(code, {:if, condition, then, nil}) do
+  defp read_ast(code, {:if, condition, then, nil, {line, _}}) do
     end_block = make_ref()
 
     code
+    |> add({:line, line})
     |> read_ast(condition)
     |> add({:unset, end_block})
     |> read_asts(then)
     |> replace({:unset, end_block}, fn code -> {:popiffalse, length_code(code)} end)
   end
 
-  defp read_ast(code, {:if, condition, then, otherwise}) do
+  defp read_ast(code, {:if, condition, then, otherwise, {line, _}}) do
     else_block = make_ref()
     end_block = make_ref()
 
     code
+    |> add({:line, line})
     |> read_ast(condition)
     |> add({:unset, else_block})
     |> read_asts(then)
@@ -148,11 +152,12 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> replace({:unset, end_block}, fn code -> {:goto, length_code(code)} end)
   end
 
-  defp read_ast(code, {:while, condition, block}) do
+  defp read_ast(code, {:while, condition, block, {line, _}}) do
     before = length_code(code)
     end_block = make_ref()
 
     code
+    |> add({:line, line})
     |> read_ast(condition)
     |> add({:unset, end_block})
     |> read_asts(block)
@@ -160,9 +165,10 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> replace({:unset, end_block}, fn code -> {:popiffalse, length_code(code)} end)
   end
 
-  defp read_ast(code, {:for, variable, iterate, block}) do
+  defp read_ast(code, {:for, variable, iterate, block, {line, _}}) do
     code =
       code
+      |> add({:line, line})
       |> read_ast(iterate)
       |> add(:mkiter)
 
@@ -185,11 +191,14 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> add({:method, length(args)})
   end
 
-  defp read_ast(code, {:raw, expr}) do
+  defp read_ast(code, {:raw, expr, {line, _}}) do
     code
+    |> add({:line, line})
     |> read_ast(expr)
     |> add(:pop)
   end
+
+  defp read_ast(code, :line), do: code
 
   defp read_ast(_code, unknown) do
     raise "unknown AST portion: #{inspect(unknown)}"

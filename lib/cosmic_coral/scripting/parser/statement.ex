@@ -11,7 +11,7 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
   import CosmicCoral.Scripting.Parser.Constants, only: [id: 0, isolate: 1, isolate: 2]
   import CosmicCoral.Scripting.Parser.Operator
 
-  newline = ascii_char([?\n]) |> replace(:line) |> label("newline") |> isolate(check: false)
+  newline = string("\n") |> replace(:line) |> label("newline") |> isolate(check: false)
 
   equal = string("=") |> label("=") |> replace(:=) |> isolate(check: false)
   colon = ascii_char([?:]) |> label(":") |> replace(:":") |> isolate(check: false)
@@ -25,6 +25,7 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
 
   assignment =
     id()
+    |> line()
     |> concat(
       choice([equal, plus_eq(), minus_eq(), mul_eq(), div_eq()])
       |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
@@ -32,10 +33,11 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> reduce(:reduce_assign)
     |> label("assignment")
 
-  defp reduce_assign([{:var, var}, opeq, value]), do: {opeq, var, value}
+  defp reduce_assign([{[{:var, var}], {line, offset}}, opeq, value]), do: {opeq, var, value, {line, offset}}
 
   if_stmt =
     if_kw
+    |> line()
     |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
     |> ignore(colon)
     |> ignore(newline)
@@ -49,11 +51,17 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> concat(endif)
     |> reduce(:reduce_if)
 
-  def reduce_if([:if, condition, {:stmt_list, then}, :endif]), do: {:if, condition, then, nil}
-  def reduce_if([:if, condition, {:stmt_list, then}, {:stmt_list, otherwise}, :endif]), do: {:if, condition, then, otherwise}
+  def reduce_if([{[:if], {line, offset}}, condition, {:stmt_list, then}, :endif]) do
+    {:if, condition, then, nil, {line, offset}}
+  end
+
+  def reduce_if([{[:if], {line, offset}}, condition, {:stmt_list, then}, {:stmt_list, otherwise}, :endif]) do
+    {:if, condition, then, otherwise, {line, offset}}
+  end
 
   while_stmt =
     while_kw
+    |> line()
     |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
     |> ignore(colon)
     |> ignore(newline)
@@ -61,10 +69,11 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> concat(done)
     |> reduce(:reduce_while)
 
-  def reduce_while([:while, condition, {:stmt_list, block}, :done]), do: {:while, condition, block}
+  def reduce_while([{[:while], {line, offset}}, condition, {:stmt_list, block}, :done]), do: {:while, condition, block, {line, offset}}
 
   for_stmt =
     for_kw
+    |> line()
     |> concat(id())
     |> concat(in_kw)
     |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
@@ -74,24 +83,25 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> concat(done)
     |> reduce(:reduce_for)
 
-  def reduce_for([:for, {:var, variable}, :in, expression, {:stmt_list, block}, :done]) do
-    {:for, variable, expression, block}
+  def reduce_for([{[:for], {line, offset}}, {:var, variable}, :in, expression, {:stmt_list, block}, :done]) do
+    {:for, variable, expression, block, {line, offset}}
   end
 
   defparsecp(
     :statement_list,
-    ignore(repeat(newline))
+    repeat(newline)
     |> parsec(:statement)
     |> repeat(
-      ignore(times(newline, min: 1))
+      times(newline, min: 1)
       |> parsec(:statement)
     )
+    |> repeat(newline)
     |> tag(:stmt_list)
-    |> ignore(repeat(newline))
   )
 
   raw_value =
     parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+    |> line()
     |> choice([
       eos(),
       lookahead(string("\n"))
@@ -99,7 +109,7 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> tag(:raw)
     |> reduce(:reduce_raw)
 
-  def reduce_raw([{:raw, [expr]}]), do: {:raw, expr}
+  def reduce_raw([{:raw, [{[expr], {line, offset}}]}]), do: {:raw, expr, {line, offset}}
 
   defcombinatorp(
     :statement,

@@ -8,7 +8,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   """
 
   @enforce_keys [:bytecode]
-  defstruct [:bytecode, cursor: 0, stack: [], references: %{}, variables: %{}, debugger: nil]
+  defstruct [:bytecode, cursor: 0, line: 1, stack: [], references: %{}, variables: %{}, debugger: nil]
 
   alias CosmicCoral.Scripting.Interpreter.{Debugger, Iterator, Script}
   alias CosmicCoral.Scripting.Object
@@ -17,6 +17,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   @type t() :: %Script{
                         bytecode: list(),
                         cursor: integer(),
+                        line: integer(),
                         stack: list(),
                         references: map(),
                         variables: map(),
@@ -261,6 +262,9 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
 
     script
   end
+
+  defp handle(script, {:line, line}), do: %{script | line: line}
+
   defp handle(_script, unknown) do
     raise "unknown bytecode: #{inspect(unknown)}"
   end
