@@ -17,14 +17,30 @@ defmodule CosmicCoral.Scripting do
   execute this bytecode, returning the executed script.
   """
   @spec run(binary()) :: {:ok, Interpreter.Script.t()} | {:error, term()}
-  def run(code, debug \\ false) do
+  def run(code, opts \\ []) do
+    debug = Keyword.get(opts, :debug, false)
+    call = Keyword.get(opts, :call, true)
+    show_ast = Keyword.get(opts, :show_ast, false)
+
     {:ok, ast} = Parser.exec(code)
+
+    if show_ast, do: IO.inspect(ast, label: "ast")
 
     script =
       [ast]
       |> Interpreter.AST.convert()
 
-    ((debug && %{script | debugger: Interpreter.Debugger.new()}) || script)
-    |> Interpreter.Script.execute()
+    script =
+      if debug do
+        %{script | debugger: Interpreter.Debugger.new()}
+      else
+        script
+      end
+
+    if call do
+      Interpreter.Script.execute(script)
+    else
+      script
+    end
   end
 end

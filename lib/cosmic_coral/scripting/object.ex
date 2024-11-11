@@ -1,50 +1,20 @@
 defmodule CosmicCoral.Scripting.Object do
   @moduledoc """
-  Defines an object (a namespace with attributes and methods) for an object.
-  This defines a namespace for builtin objects (like lists and dicts).
+  Defines a CosmicCoral object, to be manipulated in-game.
+
+  Defines an object in Cosmic Coral.
+
+  An object is a "piece of the game universe", although some might refer
+  to external data. An objec contains both attributes and methods:
+  these can be defined either in the code or in game through administrator
+  commands. The game would be able to handle both.
+
+  For instance, lists are defined in the Elixir code, but they're used
+  in the game world to store data. Characters are defined in the Elixir code,
+  but the game code can send messages to the connected client.
+  Administrators can add attributes and methods to the character
+  as well. They should both be used and called in the same way.
   """
 
-  defmacro __using__(_opts) do
-    quote do
-      Module.register_attribute(__MODULE__, :attribute, persist: true)
-      Module.register_attribute(__MODULE__, :method, accumulate: true, persist: true)
-      Module.register_attribute(__MODULE__, :methods, persist: true)
 
-      import CosmicCoral.Scripting.Object
-      alias CosmicCoral.Scripting.Interpreter.Script
-
-      @before_compile CosmicCoral.Scripting.Object
-    end
-  end
-
-  defmacro __before_compile__(_env) do
-    quote do
-      @methods @method |> Enum.map(fn name -> {name, String.to_existing_atom("m_#{name}")} end) |> Map.new()
-
-      @doc false
-      def methods do
-        @methods
-      end
-    end
-  end
-
-  defmacro defmet({name, _, args}, do: block) do
-    quote do
-      @method to_string(unquote(name))
-      def unquote(String.to_atom("m_#{name}"))(unquote_splicing(args)) do
-        unquote(block)
-      end
-    end
-  end
-
-  @doc """
-  Call a method of this namespace.
-
-  This method takes a script structure and returns it in any case.
-  """
-  def call(module, name, script, self, reference, args \\ nil, kwargs \\ nil) do
-    method = Map.get(module.methods(), name)
-
-    apply(module, method, [script, self, reference, args, kwargs])
-  end
 end

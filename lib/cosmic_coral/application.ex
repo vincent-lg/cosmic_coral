@@ -8,6 +8,7 @@ defmodule CosmicCoral.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      {Cachex, name: :cc_cache},
       CosmicWeb.Telemetry,
       CosmicCoral.Repo,
       {Ecto.Migrator,

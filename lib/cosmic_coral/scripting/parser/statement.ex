@@ -25,6 +25,10 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
 
   assignment =
     id()
+    |> repeat(
+      ignore(dot())
+      |> concat(id())
+    ) |> tag(:nested)
     |> line()
     |> concat(
       choice([equal, plus_eq(), minus_eq(), mul_eq(), div_eq()])
@@ -33,7 +37,10 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> reduce(:reduce_assign)
     |> label("assignment")
 
-  defp reduce_assign([{[{:var, var}], {line, offset}}, opeq, value]), do: {opeq, var, value, {line, offset}}
+  defp reduce_assign([{[{:nested, nested}], {line, offset}}, opeq, value]) do
+    names = for {var, name} <- nested, do: name
+    {opeq, names, value, {line, offset}}
+  end
 
   if_stmt =
     if_kw

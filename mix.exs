@@ -34,6 +34,7 @@ defmodule CosmicCoral.MixProject do
     [
       {:nimble_parsec, "~> 1.4"},
       {:unicode_set, "~> 1.1.0"},
+      {:cachex, "~> 4.0"},
       {:phoenix, "~> 1.7.10"},
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.10"},

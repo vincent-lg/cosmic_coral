@@ -24,6 +24,30 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     read_ast(code, ast)
   end
 
+  defp read_ast(code, {:var, var}) when is_binary(var) do
+    code
+    |> add({:read, var})
+  end
+
+  defp read_ast(code, {:function, name, args}) do
+    code
+    |> add({:builtin, name})
+    |> read_asts(args)
+    |> add({:call, length(args)})
+  end
+
+  defp read_ast(code, [{:function, name, args}, {:nested, sub}]) when is_list(sub) do
+    code
+    |> read_ast({:function, name, args})
+    |> read_nested_ast(sub)
+  end
+
+  defp read_ast(code, [first, {:nested, sub}]) when is_list(sub) do
+    code
+    |> read_ast(first)
+    |> read_nested_ast(sub)
+  end
+
   defp read_ast(code, global) when global in [true, false] do
     code
     |> add({:put, global})
@@ -42,11 +66,6 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
   defp read_ast(code, seq) when is_list(seq) do
     Enum.reduce(seq, code, fn element, code -> read_ast(code, element) end)
     |> add({:list, length(seq)})
-  end
-
-  defp read_ast(code, {:var, var}) when is_binary(var) do
-    code
-    |> add({:read, var})
   end
 
   defp read_ast(code, {op, [left, right]}) when op in [:+, :-, :*, :/] do
@@ -108,22 +127,44 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     end)
   end
 
-  defp read_ast(code, {:=, variable, value, {line, _}}) do
-    code
-    |> add({:line, line})
-    |> read_ast(value)
-    |> add({:store, variable})
+  defp read_ast(code, {:=, names, value, {line, _}}) do
+    code =
+      code
+      |> add({:line, line})
+      |> read_ast(value)
+
+    Enum.reduce(Enum.with_index(names), code, fn
+       {name, 0}, code when length(names) == 1 -> add(code, {:store, name})
+       {name, 0}, code -> add(code, {:read, name})
+       {name, index}, code when index == length(names) - 1 -> add(code, {:setattr, name})
+       {name, _}, code -> add(code, {:getattr, name})
+    end)
   end
 
-  defp read_ast(code, {eq_op, variable, value, {line, _}}) when eq_op in [:"+=", :"-=", :"*=", :"/="] do
+  defp read_ast(code, {eq_op, names, value, {line, _}}) when eq_op in [:"+=", :"-=", :"*=", :"/="] do
     op = Map.get(@eq_op, eq_op)
 
-    code
-    |> add({:line, line})
-    |> add({:read, variable})
-    |> read_ast(value)
-    |> add(op)
-    |> add({:store, variable})
+    code =
+      code
+      |> add({:line, line})
+
+    code =
+      Enum.reduce(Enum.with_index(names), code, fn
+         {name, 0}, code -> add(code, {:read, name})
+         {name, _}, code -> add(code, {:getattr, name})
+      end)
+
+    code =
+      code
+      |> read_ast(value)
+      |> add(op)
+
+    Enum.reduce(Enum.with_index(names), code, fn
+       {name, 0}, code when length(names) == 1 -> add(code, {:store, name})
+       {name, 0}, code -> add(code, {:read, name})
+       {name, index}, code when index == length(names) - 1 -> add(code, {:setattr, name})
+       {name, _}, code -> add(code, {:getattr, name})
+    end)
   end
 
   defp read_ast(code, {:if, condition, then, nil, {line, _}}) do
@@ -183,13 +224,13 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> replace({:unset, end_block}, fn code -> {:iter, length_code(code)} end)
   end
 
-  defp read_ast(code, {:method, object, name, args}) do
-    code
-    |> add({:read, object})
-    |> read_asts(args)
-    |> read_ast(name)
-    |> add({:method, length(args)})
-  end
+  #defp read_ast(code, {:method, object, name, args}) do
+  #  code
+  #  |> add({:read, object})
+  #  |> read_asts(args)
+  #  |> read_ast(name)
+  #  |> add({:call, length(args)})
+  #end
 
   defp read_ast(code, {:raw, expr, {line, _}}) do
     code
@@ -206,6 +247,30 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
 
   def read_asts(code, asts) do
     Enum.reduce(asts, code, fn ast, code -> read_ast(code, ast) end)
+  end
+
+  defp read_nested_ast(code, {:var, to_get}) when is_binary(to_get) do
+    code
+    |> add({:getattr, to_get})
+  end
+
+  defp read_nested_ast(code, {:function, name, args}) when is_binary(name) do
+    code
+    |> add({:getattr, name})
+    |> read_asts(args)
+    |> add({:call, length(args)})
+  end
+
+  defp read_nested_ast(code, []) do
+    code
+  end
+
+  defp read_nested_ast(code, nested) when is_list(nested) do
+    Enum.reduce(nested, code, fn nest, code -> read_nested_ast(code, nest) end)
+  end
+
+  defp read_nested_ast(code, {:nested, nested}) do
+    read_nested_ast(code, [nested])
   end
 
   defp length_code(code) do

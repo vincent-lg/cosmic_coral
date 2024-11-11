@@ -24,7 +24,7 @@ defmodule CosmicCoral.Scripting.ForTest do
         sum += number
       done
     done
-    """, true)
+    """)
     assert script.variables["sum"] == 36
     assert Script.get_variable_value(script, "sub_add") == [6, 7, 8]
   end

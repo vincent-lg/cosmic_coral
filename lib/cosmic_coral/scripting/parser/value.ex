@@ -97,10 +97,9 @@ defmodule CosmicCoral.Scripting.Parser.Value do
     ])
     |> label("variable")
 
-  method =
+  defcombinatorp(
+    :function,
     id()
-    |> ignore(dot())
-    |> concat(id())
     |> ignore(lparen())
     |> optional(
       parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
@@ -111,14 +110,42 @@ defmodule CosmicCoral.Scripting.Parser.Value do
       |> tag(:args)
     )
     |> ignore(rparen())
-    |> tag(:method)
-    |> reduce(:reduce_method)
+    |> tag(:function)
+    |> reduce(:reduce_function)
+  )
 
-  def reduce_method([{:method, [{:var, on}, {:var, name}, {:args, expressions}]}]) do
-    {:method, on, name, expressions}
+  def reduce_function([{:function, [{:var, name}]}]), do: {:function, name, []}
+  def reduce_function([{:function, [{:var, name}, {:args, args}]}]) do
+    {:function, name, args}
   end
+
+  defcombinator(
+    :nested_values,
+    choice([
+      globals,
+      number,
+      str,
+      ignore(string("-")) |> concat(parsec(:function)) |> tag(:neg),
+      ignore(string("-")) |> concat(id()) |> tag(:neg),
+      parsec(:function),
+      id()
+    ])
+    |> optional(
+      repeat(
+        ignore(dot())
+        |> choice([parsec(:function), id()])
+        |> reduce(:reduce_nested_values)
+      )
+      |> tag(:nested)
+    )
+    |> reduce(:reduce_nested_values)
+  )
+
+  def reduce_nested_values([value, {:nested, []}]), do: value
+  def reduce_nested_values(value), do: value
+
   defcombinator(
     :value,
-    choice([globals, number, method, id_value, str])
+    parsec(:nested_values)
   )
 end

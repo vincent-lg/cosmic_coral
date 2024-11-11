@@ -10,8 +10,9 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   @enforce_keys [:bytecode]
   defstruct [:bytecode, cursor: 0, line: 1, stack: [], references: %{}, variables: %{}, debugger: nil]
 
+  alias CosmicCoral.Scripting.{Builtin, Callable}
   alias CosmicCoral.Scripting.Interpreter.{Debugger, Iterator, Script}
-  alias CosmicCoral.Scripting.Object
+  alias CosmicCoral.Scripting.Namespace
 
   @typedoc "a script with bytecode"
   @type t() :: %Script{
@@ -57,6 +58,16 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     Map.get(script.variables, name)
     |> reference_to_value(script)
   end
+
+  @doc """
+  Gets the value from a reference or value.
+  """
+  @spec get_value(Script.t(), term()) :: term()
+  def get_value(script, reference) when is_reference(reference) do
+    Map.get(script.references, reference)
+  end
+
+  def get_value(_script, other), do: other
 
   @doc """
   Execute the given script.
@@ -209,6 +220,34 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     |> put_stack(value)
   end
 
+  defp handle(script, {:getattr, attr}) do
+    {script, {value, self}} = get_stack(script, :reference)
+
+    namespace = Namespace.locate(value)
+    attribute = namespace.getattr(script, self, attr)
+
+    script
+    |> put_stack(attribute)
+  end
+
+  defp handle(script, {:setattr, name}) do
+    {script, {value, self}} = get_stack(script, :reference)
+    {script, {_, to_set}} = get_stack(script, :reference)
+
+    namespace = Namespace.locate(value)
+    {script, result} = namespace.setattr(script, self, name, to_set)
+
+    script
+    |> put_stack(result)
+  end
+
+  defp handle(script, {:builtin, name}) do
+    name = Map.get(Builtin.valid(), name)
+
+    script
+    |> put_stack(%Builtin{name: name})
+  end
+
   defp handle(script, {:store, variable}) do
     {script, {value, reference}} = get_stack(script, :reference)
     value = reference || value
@@ -236,25 +275,23 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     end
   end
 
-  defp handle(script, {:method, len}) do
-    {script, name} = get_stack(script)
-
+  defp handle(script, {:call, len}) do
     {script, args} =
-      Enum.reduce(1..len, {script, []}, fn _, {script, values} ->
-        {script, group} = get_stack(script, :reference)
+      if len > 0 do
+        Enum.reduce(1..len, {script, []}, fn _, {script, values} ->
+          {script, {ref, _}} = get_stack(script, :reference)
 
-        {script, [group | values]}
-      end)
-
-    {script, {object, reference}} = get_stack(script, :reference)
-
-    namespace =
-      case object do
-        list when is_list(list) -> Object.List
+          {script, [ref | values]}
+        end)
+      else
+        {script, []}
       end
 
-    Object.call(namespace, name, script, object, reference, args)
-    |> put_stack(true)
+    {script, callable} = get_stack(script)
+    {script, value} = callable.__struct__.call(script, callable, args)
+
+    script
+    |> put_stack(value)
   end
 
   defp handle(script, :pop) do
@@ -281,7 +318,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     first =
       case retrieve do
         :value -> (is_reference(first) && Map.get(references, first)) || first
-        :reference -> (is_reference(first) && {Map.get(references, first), first}) || {first, nil}
+        :reference -> (is_reference(first) && {Map.get(references, first), first}) || {first, first}
       end
 
     script =
@@ -321,10 +358,14 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     {%{script | references: references}, reference}
   end
 
+  defp references?(value) when is_atom(value), do: false
+  defp references?(%Builtin{}), do: false
+  defp references?(%Callable{}), do: false
   defp references?(value) when is_reference(value), do: false
   defp references?(value) when is_number(value), do: false
   defp references?(value) when is_boolean(value), do: false
   defp references?(value) when is_binary(value), do: false
+  defp references?(value) when is_tuple(value), do: false
   defp references?(_value), do: true
 
   defp reference_to_value(value, script) when is_reference(value) do

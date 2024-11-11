@@ -9,6 +9,11 @@ defmodule CosmicCoral.ScriptingCase do
     end
   end
 
+  setup tags do
+    CosmicCoral.DataCase.setup_sandbox(tags)
+    :ok
+  end
+
   @doc """
   Expect a properly parsed expression.
 
