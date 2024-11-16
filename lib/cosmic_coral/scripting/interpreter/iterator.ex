@@ -15,7 +15,9 @@ defmodule CosmicCoral.Scripting.Interpreter.Iterator do
   @spec next(Script.t(), reference(), map()) :: {:count, Script.t(), term()} | :stop
   def next(script, reference, %Iterator{iterator: iterator}) do
     case Enum.at(iterator, 0) do
-      nil -> :stop
+      nil ->
+        :stop
+
       {element, index} ->
         script =
           script

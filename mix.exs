@@ -32,6 +32,8 @@ defmodule CosmicCoral.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:codepagex, "~> 0.1.9"},
+      {:toml, "~> 0.7.0"},
       {:nimble_parsec, "~> 1.4"},
       {:unicode_set, "~> 1.1.0"},
       {:cachex, "~> 4.0"},

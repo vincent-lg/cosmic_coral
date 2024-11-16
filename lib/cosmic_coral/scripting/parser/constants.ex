@@ -46,7 +46,7 @@ defmodule CosmicCoral.Scripting.Parser.Constants do
     utf8_char(@id_start_range)
     |> utf8_string(@id_continue_range, min: 0)
     |> isolate()
-    #|> map({String, :join, []})
+    # |> map({String, :join, []})
     |> post_traverse({__MODULE__, :to_varname, []})
     |> unwrap_and_tag(:var)
     |> label("variable")

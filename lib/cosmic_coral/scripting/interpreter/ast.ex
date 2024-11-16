@@ -14,7 +14,7 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
   def convert(ast) do
     bytecode =
       ast
-      |> Enum.reduce(:queue.new, &process_ast/2)
+      |> Enum.reduce(:queue.new(), &process_ast/2)
       |> :queue.to_list()
 
     %Script{bytecode: bytecode}
@@ -134,14 +134,15 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
       |> read_ast(value)
 
     Enum.reduce(Enum.with_index(names), code, fn
-       {name, 0}, code when length(names) == 1 -> add(code, {:store, name})
-       {name, 0}, code -> add(code, {:read, name})
-       {name, index}, code when index == length(names) - 1 -> add(code, {:setattr, name})
-       {name, _}, code -> add(code, {:getattr, name})
+      {name, 0}, code when length(names) == 1 -> add(code, {:store, name})
+      {name, 0}, code -> add(code, {:read, name})
+      {name, index}, code when index == length(names) - 1 -> add(code, {:setattr, name})
+      {name, _}, code -> add(code, {:getattr, name})
     end)
   end
 
-  defp read_ast(code, {eq_op, names, value, {line, _}}) when eq_op in [:"+=", :"-=", :"*=", :"/="] do
+  defp read_ast(code, {eq_op, names, value, {line, _}})
+       when eq_op in [:"+=", :"-=", :"*=", :"/="] do
     op = Map.get(@eq_op, eq_op)
 
     code =
@@ -150,8 +151,8 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
 
     code =
       Enum.reduce(Enum.with_index(names), code, fn
-         {name, 0}, code -> add(code, {:read, name})
-         {name, _}, code -> add(code, {:getattr, name})
+        {name, 0}, code -> add(code, {:read, name})
+        {name, _}, code -> add(code, {:getattr, name})
       end)
 
     code =
@@ -160,10 +161,10 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
       |> add(op)
 
     Enum.reduce(Enum.with_index(names), code, fn
-       {name, 0}, code when length(names) == 1 -> add(code, {:store, name})
-       {name, 0}, code -> add(code, {:read, name})
-       {name, index}, code when index == length(names) - 1 -> add(code, {:setattr, name})
-       {name, _}, code -> add(code, {:getattr, name})
+      {name, 0}, code when length(names) == 1 -> add(code, {:store, name})
+      {name, 0}, code -> add(code, {:read, name})
+      {name, index}, code when index == length(names) - 1 -> add(code, {:setattr, name})
+      {name, _}, code -> add(code, {:getattr, name})
     end)
   end
 
@@ -224,14 +225,6 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> replace({:unset, end_block}, fn code -> {:iter, length_code(code)} end)
   end
 
-  #defp read_ast(code, {:method, object, name, args}) do
-  #  code
-  #  |> add({:read, object})
-  #  |> read_asts(args)
-  #  |> read_ast(name)
-  #  |> add({:call, length(args)})
-  #end
-
   defp read_ast(code, {:raw, expr, {line, _}}) do
     code
     |> add({:line, line})
@@ -282,11 +275,14 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
   end
 
   defp replace(code, what, by) do
-    :queue.filtermap(fn bytecode ->
-      case bytecode do
-        ^what -> {true, by.(code)}
-        _ -> true
-      end
-    end, code)
+    :queue.filtermap(
+      fn bytecode ->
+        case bytecode do
+          ^what -> {true, by.(code)}
+          _ -> true
+        end
+      end,
+      code
+    )
   end
 end

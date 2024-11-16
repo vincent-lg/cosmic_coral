@@ -20,10 +20,10 @@ defmodule CosmicCoral.Entity do
   Create an entity from a database record.
   """
   @spec new(struct()) :: t()
-  def new(%CosmicCoral.Record.Entity{} = entity) do
+  def new(%CosmicCoral.Record.Entity{} = entity, key \\ nil) do
     %CosmicCoral.Entity{
       id: entity.id,
-      key: entity.key,
+      key: key,
       location_id: entity.location_id,
       attributes: new_attributes(entity.attributes),
       methods: new_methods(entity.methods)

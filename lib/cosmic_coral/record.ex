@@ -20,22 +20,45 @@ defmodule CosmicCoral.Record do
       nil
 
   """
-  def get_entity(id) do
-    Cachex.fetch(:cc_cache, id, fn id ->
-      Repo.get(Record.Entity, id)
-      |> Repo.preload([:attributes, :methods])
-      |> case do
-        nil -> {:ignore, nil}
-        entity ->
-          entity =
-            entity
-            |> cache_entity_attributes()
-            |> Entity.new()
+  def get_entity(key) when is_binary(key) do
+    case Cachex.get(:cc_cache, key) do
+      {:ok, nil} ->
+        case Repo.get_by(Record.Key, key: key) do
+          nil -> nil
+          %Record.Key{entity_id: entity_id} -> get_entity(entity_id)
+        end
 
-          {:commit, entity}
-      end
-    end)
-    |> from_cache_entity()
+      {:ok, entity} -> entity
+    end
+  end
+
+  def get_entity(id) when is_integer(id) do
+    case Cachex.get(:cc_cache, id) do
+      {:ok, nil} ->
+        entity_with_key =
+          Repo.one(
+            from e in Record.Entity,
+              left_join: ek in Record.Key,
+              on: ek.entity_id == e.id,
+              where: e.id == ^id,
+              select: %{entity: e, key: ek.key}
+          )
+
+        case entity_with_key do
+          nil -> nil
+          %{entity: entity, key: key} ->
+            entity =
+              entity
+              |> Repo.preload([:attributes, :methods])
+              |> cache_entity_attributes()
+              |> Entity.new(key)
+              |> cache_entity()
+
+            entity
+        end
+
+      {:ok, entity} -> entity
+    end
   end
 
   @doc """
@@ -50,17 +73,48 @@ defmodule CosmicCoral.Record do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_entity(attrs \\ %{}) do
-    %Record.Entity{}
-    |> Record.Entity.changeset(attrs)
-    |> Repo.insert()
+  def create_entity(key \\ nil) do
+    Repo.transaction(fn ->
+      # Check if the key is present and unique
+      if key do
+        case Repo.get_by(Record.Key, key: key) do
+          nil -> :ok
+          _ -> Repo.rollback("Key already exists")
+        end
+      end
+
+      # Create the entity
+      entity_changeset = Record.Entity.changeset(%Record.Entity{}, %{})
+      case Repo.insert(entity_changeset) do
+        {:ok, entity} ->
+          # If a key is provided, create the associated key record
+          if key do
+            key_changeset =
+              %Record.Key{}
+              |> Record.Key.changeset(%{key: key, entity_id: entity.id})
+
+            case Repo.insert(key_changeset) do
+              {:ok, _entity_key} -> entity
+              {:error, changeset} -> Repo.rollback(changeset)
+            end
+          else
+            entity
+          end
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
+      end
+    end)
     |> case do
       {:ok, entity} ->
-        entity = Entity.new(entity)
-        Cachex.put(:cc_cache, entity.id, entity)
+        entity =
+          Entity.new(entity, key)
+          |> cache_entity()
+
         {:ok, entity}
 
-      other -> other
+      other ->
+        other
     end
   end
 
@@ -94,12 +148,22 @@ defmodule CosmicCoral.Record do
       {:error, %Ecto.Changeset{}}
 
   """
-  def delete_entity(entity_id) do
-    case Repo.get(Record.Entity, entity_id) do
-      nil -> :error
-      entity ->
-        Repo.delete(entity)
-        Cachex.del(:cc_cache, entity_id)
+  def delete_entity(entity_id_or_key) do
+    entity = get_entity(entity_id_or_key)
+
+    case Repo.get(Record.Entity, entity.id) do
+      nil ->
+        :error
+
+      record ->
+        Repo.delete(record)
+
+        Cachex.del(:cc_cache, entity.id)
+
+        if entity.key do
+          Cachex.del(:cc_cache, entity.key)
+        end
+
         :ok
     end
   end
@@ -108,7 +172,18 @@ defmodule CosmicCoral.Record do
   defp from_cache_entity({:commit, entity}), do: entity
   defp from_cache_entity({:ignore, nil}), do: nil
 
-  defp cache_entity_attributes(%Record.Entity{attributes: attributes} = entity) when is_list(attributes) do
+  defp cache_entity(%Entity{} = entity) do
+    Cachex.put(:cc_cache, entity.id, entity)
+
+    if entity.key do
+      Cachex.put(:cc_cache, entity.key, entity)
+    end
+
+    entity
+  end
+
+  defp cache_entity_attributes(%Record.Entity{attributes: attributes} = entity)
+       when is_list(attributes) do
     for attribute <- attributes do
       Cachex.put(:cc_cache, {:attribute, entity.id, attribute.name}, attribute.id)
     end
@@ -120,7 +195,9 @@ defmodule CosmicCoral.Record do
 
   defp set_entity_attribute(%Entity{attributes: attributes} = entity, name, value) do
     case Map.fetch(attributes, name) do
-      :error -> create_entity_attribute_value(entity, name, value)
+      :error ->
+        create_entity_attribute_value(entity, name, value)
+
       {:ok, former_value} ->
         set_entity_attribute_value(entity, name, value, former_value)
     end
@@ -135,17 +212,20 @@ defmodule CosmicCoral.Record do
     |> case do
       {:ok, attribute} ->
         Cachex.put(:cc_cache, {:attribute, entity.id, attribute.name}, attribute.id)
-        entity = %{entity | attributes: Map.put(entity.attributes, name, value)}
-        Cachex.put(:cc_cache, entity.id, entity)
-        entity
 
-      error -> error
+        %{entity | attributes: Map.put(entity.attributes, name, value)}
+        |> cache_entity()
+
+      error ->
+        error
     end
   end
 
   defp set_entity_attribute_value(%Entity{} = entity, name, value, former) do
     case Cachex.get(:cc_cache, {:attribute, entity.id, name}) do
-      {:ok, nil} -> create_entity_attribute_value(entity, name, value)
+      {:ok, nil} ->
+        create_entity_attribute_value(entity, name, value)
+
       {:ok, attribute_id} ->
         serialized = :erlang.term_to_binary(value)
 
@@ -155,9 +235,8 @@ defmodule CosmicCoral.Record do
           |> Repo.update()
         end
 
-        entity = %{entity | attributes: Map.put(entity.attributes, name, value)}
-        Cachex.put(:cc_cache, entity.id, entity)
-        entity
+        %{entity | attributes: Map.put(entity.attributes, name, value)}
+        |> cache_entity()
     end
   end
 end

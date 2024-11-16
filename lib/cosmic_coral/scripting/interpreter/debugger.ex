@@ -28,24 +28,24 @@ defmodule CosmicCoral.Scripting.Interpreter.Debugger do
   Returns a formatted string with the debugging information.
   """
   def format(%{debugger: debugger} = script) do
-    {_, lines} = Enum.reduce(Enum.reverse(debugger.lines), {nil, []}, fn {index, text}, {last, lines} ->
-      byte = Enum.at(script.bytecode, index)
-      name = (byte && inspect(byte)) || "end"
-      len_indent = String.length(to_string(index))
-      indent = String.duplicate(" ", len_indent)
+    {_, lines} =
+      Enum.reduce(Enum.reverse(debugger.lines), {nil, []}, fn {index, text}, {last, lines} ->
+        byte = Enum.at(script.bytecode, index)
+        name = (byte && inspect(byte)) || "end"
+        len_indent = String.length(to_string(index))
+        indent = String.duplicate(" ", len_indent)
 
-      text =
-        if last == index do
-          "#{indent} #{text}"
-        else
-          pad_indent = String.pad_leading(to_string(index), len_indent)
-          "#{pad_indent} #{name}\n#{indent} #{text}"
-        end
+        text =
+          if last == index do
+            "#{indent} #{text}"
+          else
+            pad_indent = String.pad_leading(to_string(index), len_indent)
+            "#{pad_indent} #{name}\n#{indent} #{text}"
+          end
 
-      {index, [text | lines]}
-    end)
+        {index, [text | lines]}
+      end)
 
     Enum.join(Enum.reverse(lines), "\n")
   end
 end
-

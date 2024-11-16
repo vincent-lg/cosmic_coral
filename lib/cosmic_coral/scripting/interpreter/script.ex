@@ -8,7 +8,16 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   """
 
   @enforce_keys [:bytecode]
-  defstruct [:bytecode, cursor: 0, line: 1, stack: [], references: %{}, variables: %{}, debugger: nil]
+  defstruct [
+    :bytecode,
+    cursor: 0,
+    line: 1,
+    stack: [],
+    references: %{},
+    variables: %{},
+    bound: %{},
+    debugger: nil
+  ]
 
   alias CosmicCoral.Scripting.{Builtin, Callable}
   alias CosmicCoral.Scripting.Interpreter.{Debugger, Iterator, Script}
@@ -16,14 +25,15 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
 
   @typedoc "a script with bytecode"
   @type t() :: %Script{
-                        bytecode: list(),
-                        cursor: integer(),
-                        line: integer(),
-                        stack: list(),
-                        references: map(),
-                        variables: map(),
-                        debugger: nil | %Debugger{}
-                      }
+          bytecode: list(),
+          cursor: integer(),
+          line: integer(),
+          stack: list(),
+          references: map(),
+          variables: map(),
+          bound: map(),
+          debugger: nil | %Debugger{}
+        }
 
   @ops %{+: &+/2, -: &-/2, *: &*/2, /: &//2}
   @cmps %{<: &</2, <=: &<=/2, >: &>/2, >=: &>=/2, ==: &==/2, !=: &!=/2}
@@ -45,8 +55,10 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   @spec update_reference(Script.t(), reference(), term()) :: Script.t()
   def update_reference(%{references: references} = script, reference, value) do
     references = Map.put(references, reference, value)
+
     %{script | references: references}
     |> debug("ref #{inspect(reference)} set to #{inspect(value)}")
+    |> update_bound(reference, value)
   end
 
   @doc """
@@ -70,6 +82,24 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   def get_value(_script, other), do: other
 
   @doc """
+  Add a bound attribute.
+  """
+  @spec bind_attribute(t(), reference(), integer(), String.t()) :: t()
+  def bind_attribute(script, reference, entity_id, attribute_name) do
+    bound =
+      script.bound
+      |> Map.get(reference, MapSet.new())
+      |> MapSet.put({entity_id, attribute_name})
+
+    bound =
+      script.bound
+      |> Map.put(reference, bound)
+      |> Map.put({entity_id, attribute_name}, reference)
+
+    %{script | bound: bound}
+  end
+
+  @doc """
   Execute the given script.
   """
   @spec execute(Script.t()) :: Script.t()
@@ -88,7 +118,9 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
 
   defp run_next_bytecode(bytecode, %{cursor: cursor} = script) do
     case Map.get(bytecode, cursor) do
-      nil -> script
+      nil ->
+        script
+
       op ->
         script =
           script
@@ -267,7 +299,9 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     {script, {iterator, reference}} = get_stack(script, :reference)
 
     case Iterator.next(script, reference, iterator) do
-      :stop -> jump(script, line)
+      :stop ->
+        jump(script, line)
+
       {:cont, script, value} ->
         script
         |> put_stack(reference)
@@ -306,6 +340,34 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     raise "unknown bytecode: #{inspect(unknown)}"
   end
 
+  defp put_stack(%{stack: stack} = script, {:setattr, entity_id, name, value}) do
+    value = Map.get(script.bound, {entity_id, name}, value)
+    {script, value} = (references?(value) && reference(script, value)) || {script, value}
+
+    if is_reference(value) do
+      bind_attribute(script, value, entity_id, name)
+      |> debug("bind entity[#{entity_id}].#{name} to #{inspect(value)}")
+    else
+      script
+    end
+  end
+
+  defp put_stack(%{stack: stack} = script, {:getattr, entity_id, name, value}) do
+    value = Map.get(script.bound, {entity_id, name}, value)
+    {script, value} = (references?(value) && reference(script, value)) || {script, value}
+
+    script =
+      %{script | stack: [value | stack]}
+      |> debug("in stack: #{inspect(value)}")
+
+    if is_reference(value) do
+      bind_attribute(script, value, entity_id, name)
+      |> debug("bind entity[#{entity_id}].#{name} to #{inspect(value)}")
+    else
+      script
+    end
+  end
+
   defp put_stack(%{stack: stack} = script, value) do
     {script, value} = (references?(value) && reference(script, value)) || {script, value}
 
@@ -314,11 +376,15 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   end
 
   defp get_stack(script, retrieve \\ :value)
+
   defp get_stack(%{stack: [first | next], references: references} = script, retrieve) do
     first =
       case retrieve do
-        :value -> (is_reference(first) && Map.get(references, first)) || first
-        :reference -> (is_reference(first) && {Map.get(references, first), first}) || {first, first}
+        :value ->
+          (is_reference(first) && Map.get(references, first)) || first
+
+        :reference ->
+          (is_reference(first) && {Map.get(references, first), first}) || {first, first}
       end
 
     script =
@@ -379,10 +445,21 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
 
   defp reference_to_value(value, _script), do: value
 
+  defp update_bound(script, reference, value) do
+    script.bound
+    |> Map.get(reference, [])
+    |> Enum.reduce(script, fn {entity_id, attribute}, script ->
+      CosmicCoral.Record.set_attribute(entity_id, attribute, value)
+
+      script
+    end)
+  end
+
   defp debug(%{debugger: %Debugger{} = debugger} = script, text) do
     debugger = Debugger.add(debugger, script.cursor - 1, text)
 
     %{script | debugger: debugger}
   end
+
   defp debug(script, _text), do: script
 end

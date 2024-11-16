@@ -7,9 +7,11 @@ defmodule CosmicCoral.Scripting.EntityTest do
 
   describe "creation" do
     test "an empty entity" do
-      script = run("""
-      ent = Entity()
-      """)
+      script =
+        run("""
+        ent = Entity()
+        """)
+
       entity = Script.get_variable_value(script, "ent")
       assert entity.id > 0
       assert entity.attributes == %{}
@@ -17,10 +19,12 @@ defmodule CosmicCoral.Scripting.EntityTest do
     end
 
     test "an empty entity, checking its ID attribute" do
-      script = run("""
-      ent = Entity()
-      id = ent.id
-      """)
+      script =
+        run("""
+        ent = Entity()
+        id = ent.id
+        """)
+
       entity = Script.get_variable_value(script, "ent")
       assert entity.id > 0
       assert entity.attributes == %{}
@@ -36,11 +40,13 @@ defmodule CosmicCoral.Scripting.EntityTest do
 
   describe "attribute setting" do
     test "create entity and set attribute with number" do
-      script = run("""
-      ent = Entity()
-      ent.value = 5
-      id = ent.id
-      """)
+      script =
+        run("""
+        ent = Entity()
+        ent.value = 5
+        id = ent.id
+        """)
+
       entity = Script.get_variable_value(script, "ent")
       assert entity.id > 0
       assert map_size(entity.attributes) == 1
@@ -55,11 +61,13 @@ defmodule CosmicCoral.Scripting.EntityTest do
     end
 
     test "create entity and set attribute with string" do
-      script = run("""
-      ent = Entity()
-      ent.value = "ok"
-      id = ent.id
-      """)
+      script =
+        run("""
+        ent = Entity()
+        ent.value = "ok"
+        id = ent.id
+        """)
+
       entity = Script.get_variable_value(script, "ent")
       assert entity.id > 0
       assert map_size(entity.attributes) == 1
@@ -74,11 +82,13 @@ defmodule CosmicCoral.Scripting.EntityTest do
     end
 
     test "create entity and set attribute with an operation" do
-      script = run("""
-      ent = Entity()
-      ent.value = 2 * 3
-      id = ent.id
-      """)
+      script =
+        run("""
+        ent = Entity()
+        ent.value = 2 * 3
+        id = ent.id
+        """)
+
       entity = Script.get_variable_value(script, "ent")
       assert entity.id > 0
       assert map_size(entity.attributes) == 1

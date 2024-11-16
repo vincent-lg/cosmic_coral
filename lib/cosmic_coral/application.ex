@@ -12,8 +12,7 @@ defmodule CosmicCoral.Application do
       CosmicWeb.Telemetry,
       CosmicCoral.Repo,
       {Ecto.Migrator,
-        repos: Application.fetch_env!(:cosmic_coral, :ecto_repos),
-        skip: skip_migrations?()},
+       repos: Application.fetch_env!(:cosmic_coral, :ecto_repos), skip: skip_migrations?()},
       {DNSCluster, query: Application.get_env(:cosmic_coral, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: CosmicCoral.PubSub},
       # Start the Finch HTTP client for sending emails

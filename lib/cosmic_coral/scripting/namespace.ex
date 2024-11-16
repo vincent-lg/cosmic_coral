@@ -23,8 +23,12 @@ defmodule CosmicCoral.Scripting.Namespace do
 
   defmacro __before_compile__(_env) do
     quote do
-      @attributes @attribute |> Enum.map(fn name -> {name, String.to_existing_atom("a_#{name}")} end) |> Map.new()
-      @methods @method |> Enum.map(fn name -> {name, String.to_existing_atom("m_#{name}")} end) |> Map.new()
+      @attributes @attribute
+                  |> Enum.map(fn name -> {name, String.to_existing_atom("a_#{name}")} end)
+                  |> Map.new()
+      @methods @method
+               |> Enum.map(fn name -> {name, String.to_existing_atom("m_#{name}")} end)
+               |> Map.new()
 
       @doc false
       def attributes do
@@ -45,7 +49,8 @@ defmodule CosmicCoral.Scripting.Namespace do
 
             %Callable{module: __MODULE__, object: self, name: method}
 
-          attribute -> apply(__MODULE__, attribute, [script, self])
+          attribute ->
+            apply(__MODULE__, attribute, [script, self])
         end
       end
     end

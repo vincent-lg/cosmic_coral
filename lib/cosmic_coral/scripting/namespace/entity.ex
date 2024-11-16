@@ -12,12 +12,14 @@ defmodule CosmicCoral.Scripting.Namespace.Entity do
     entity = Script.get_value(script, self)
 
     case name do
-      "id" -> entity.id
+      "id" ->
+        entity.id
+
       other_name ->
         Map.get(entity.attributes, other_name)
         |> case do
           nil -> :none
-          value -> value
+          value -> {:getattr, entity.id, name, value}
         end
     end
   end
@@ -30,12 +32,14 @@ defmodule CosmicCoral.Scripting.Namespace.Entity do
     entity = Script.get_value(script, self)
 
     case name do
-      "id" -> {script, :none}
+      "id" ->
+        {script, :none}
+
       other_name when is_binary(other_name) ->
         entity = CosmicCoral.Record.set_attribute(entity.id, name, to_value)
         script = Script.update_reference(script, self, entity)
 
-        {script, :none}
+        {script, {:setattr, entity.id, name, to_ref}}
     end
   end
 end

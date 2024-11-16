@@ -12,7 +12,7 @@ defmodule CosmicCoral.Scripting.Parser.Value do
     <id_value> ::= ["-"]<id>
     <str>      ::= <single> | <double>
     <single>   ::= "'" <any letter> "'"
-    <double>   ::= """ <any letter> """
+    <double>   ::= \""" <any letter> \"""
     <digit>    ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
     <letter>   ::= (utf-8 letter)
     <valid_Ct> ::= (utf-8 coutinuation)
@@ -29,7 +29,7 @@ defmodule CosmicCoral.Scripting.Parser.Value do
   globals =
     choice([
       string("true") |> replace(true),
-      string("false") |> replace(false),
+      string("false") |> replace(false)
     ])
     |> isolate()
     |> label("global name")
@@ -115,6 +115,7 @@ defmodule CosmicCoral.Scripting.Parser.Value do
   )
 
   def reduce_function([{:function, [{:var, name}]}]), do: {:function, name, []}
+
   def reduce_function([{:function, [{:var, name}, {:args, args}]}]) do
     {:function, name, args}
   end

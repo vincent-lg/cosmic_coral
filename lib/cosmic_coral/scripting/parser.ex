@@ -30,8 +30,10 @@ defmodule CosmicCoral.Scripting.Parser do
   end
 
   defp unwrap({:ok, [ast], <<>>, _, _line, _offset}), do: {:ok, ast}
+
   defp unwrap({:ok, ast, rest, _, _, _}) do
     {:error, "could not parse #{inspect(rest)}, ast=#{inspect(ast)}, len=#{length(ast)}"}
   end
+
   defp unwrap({:error, reason, _rest, _context, _line, _offset}), do: {:error, reason}
 end

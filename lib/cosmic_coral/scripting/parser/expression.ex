@@ -88,7 +88,7 @@ defmodule CosmicCoral.Scripting.Parser.Expression do
     :term_not,
     choice([
       ignore(not_) |> parsec(:term_not) |> tag(:not),
-      parsec(:term_eq),
+      parsec(:term_eq)
     ])
     |> label("logic not")
   )

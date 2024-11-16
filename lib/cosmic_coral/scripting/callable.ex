@@ -10,10 +10,10 @@ defmodule CosmicCoral.Scripting.Callable do
 
   @typedoc "a callable object in script"
   @type t() :: %Callable{
-                         module: module(),
-                         object: term(),
-                         name: String.t()
-                      }
+          module: module(),
+          object: term(),
+          name: String.t()
+        }
 
   @doc """
   Call the namespace.

@@ -28,7 +28,8 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> repeat(
       ignore(dot())
       |> concat(id())
-    ) |> tag(:nested)
+    )
+    |> tag(:nested)
     |> line()
     |> concat(
       choice([equal, plus_eq(), minus_eq(), mul_eq(), div_eq()])
@@ -62,7 +63,13 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     {:if, condition, then, nil, {line, offset}}
   end
 
-  def reduce_if([{[:if], {line, offset}}, condition, {:stmt_list, then}, {:stmt_list, otherwise}, :endif]) do
+  def reduce_if([
+        {[:if], {line, offset}},
+        condition,
+        {:stmt_list, then},
+        {:stmt_list, otherwise},
+        :endif
+      ]) do
     {:if, condition, then, otherwise, {line, offset}}
   end
 
@@ -76,7 +83,8 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> concat(done)
     |> reduce(:reduce_while)
 
-  def reduce_while([{[:while], {line, offset}}, condition, {:stmt_list, block}, :done]), do: {:while, condition, block, {line, offset}}
+  def reduce_while([{[:while], {line, offset}}, condition, {:stmt_list, block}, :done]),
+    do: {:while, condition, block, {line, offset}}
 
   for_stmt =
     for_kw
@@ -90,7 +98,14 @@ defmodule CosmicCoral.Scripting.Parser.Statement do
     |> concat(done)
     |> reduce(:reduce_for)
 
-  def reduce_for([{[:for], {line, offset}}, {:var, variable}, :in, expression, {:stmt_list, block}, :done]) do
+  def reduce_for([
+        {[:for], {line, offset}},
+        {:var, variable},
+        :in,
+        expression,
+        {:stmt_list, block},
+        :done
+      ]) do
     {:for, variable, expression, block, {line, offset}}
   end
 

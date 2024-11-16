@@ -15,6 +15,4 @@ defmodule CosmicCoral.Scripting.Object do
   Administrators can add attributes and methods to the character
   as well. They should both be used and called in the same way.
   """
-
-
 end
