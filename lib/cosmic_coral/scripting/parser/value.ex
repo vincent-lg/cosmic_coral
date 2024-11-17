@@ -97,15 +97,28 @@ defmodule CosmicCoral.Scripting.Parser.Value do
     ])
     |> label("variable")
 
+  defcombinator(
+    :arg,
+    choice([
+      (
+        id()
+        |> ignore(equal())
+        |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+        |> tag(:kwarg)
+      ),
+      parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+    ])
+  )
+
   defcombinatorp(
     :function,
     id()
     |> ignore(lparen())
     |> optional(
-      parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+      parsec(:arg)
       |> repeat(
         ignore(comma())
-        |> parsec({CosmicCoral.Scripting.Parser.Expression, :expr})
+        |> parsec(:arg)
       )
       |> tag(:args)
     )
@@ -114,10 +127,19 @@ defmodule CosmicCoral.Scripting.Parser.Value do
     |> reduce(:reduce_function)
   )
 
-  def reduce_function([{:function, [{:var, name}]}]), do: {:function, name, []}
+  def reduce_function([{:function, [{:var, name}]}]) do
+    {:function, name, [], %{}}
+  end
 
   def reduce_function([{:function, [{:var, name}, {:args, args}]}]) do
-    {:function, name, args}
+    {args, kwargs} =
+      args
+      |> Enum.reduce({[], %{}}, fn
+        {:kwarg, [{:var, key}, value]}, {args, kwargs} -> {args, Map.put(kwargs, key, value)}
+        value, {args, kwargs} -> {[value | args], kwargs}
+      end)
+
+    {:function, name, args, kwargs}
   end
 
   defcombinator(

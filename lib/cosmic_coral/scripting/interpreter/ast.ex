@@ -29,16 +29,27 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> add({:read, var})
   end
 
-  defp read_ast(code, {:function, name, args}) do
+  defp read_ast(code, {:function, name, args, kwargs}) do
+    code =
+      code
+      |> add({:builtin, name})
+      |> add({:dict, :no_reference})
+
+    code =
+      Enum.reduce(kwargs, code, fn {key, value}, code ->
+        code
+        |> read_ast(value)
+        |> add({:put_dict, key, :no_reference})
+      end)
+
     code
-    |> add({:builtin, name})
     |> read_asts(args)
     |> add({:call, length(args)})
   end
 
-  defp read_ast(code, [{:function, name, args}, {:nested, sub}]) when is_list(sub) do
+  defp read_ast(code, [{:function, name, args, kwargs}, {:nested, sub}]) when is_list(sub) do
     code
-    |> read_ast({:function, name, args})
+    |> read_ast({:function, name, args, kwargs})
     |> read_nested_ast(sub)
   end
 
@@ -247,9 +258,20 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
     |> add({:getattr, to_get})
   end
 
-  defp read_nested_ast(code, {:function, name, args}) when is_binary(name) do
+  defp read_nested_ast(code, {:function, name, args, kwargs}) when is_binary(name) do
+    code =
+      code
+      |> add({:getattr, name})
+      |> add({:dict, :no_reference})
+
+    code =
+      Enum.reduce(kwargs, code, fn {key, value}, code ->
+        code
+        |> read_ast(value)
+        |> add({:put_dict, key, :no_reference})
+      end)
+
     code
-    |> add({:getattr, name})
     |> read_asts(args)
     |> add({:call, length(args)})
   end

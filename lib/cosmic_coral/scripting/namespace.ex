@@ -73,6 +73,18 @@ defmodule CosmicCoral.Scripting.Namespace do
       end
     end
   end
+  defmacro defmet({name, _, args}, constraints, do: block) do
+    quote do
+      @method to_string(unquote(name))
+      def unquote(String.to_atom("m_#{name}"))(unquote_splicing(args)) do
+        case validate(script, unquote(constraints)) do
+          %Script{errors: errors} -> script
+          _ ->
+            unquote(block)
+        end
+      end
+    end
+  end
 
   @doc """
   Locate the namespace matching a given value.

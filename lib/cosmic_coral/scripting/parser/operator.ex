@@ -130,4 +130,10 @@ defmodule CosmicCoral.Scripting.Parser.Operator do
     |> label("dot")
     |> isolate(check: false)
   end
+
+  def equal do
+    string("=")
+    |> replace(:=)
+    |> isolate(check: false)
+  end
 end

@@ -16,6 +16,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     references: %{},
     variables: %{},
     bound: %{},
+    error: nil,
     debugger: nil
   ]
 
@@ -32,6 +33,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
           references: map(),
           variables: map(),
           bound: map(),
+          error: nil | String.t(),
           debugger: nil | %Debugger{}
         }
 
@@ -116,6 +118,10 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     |> run_next_bytecode(script)
   end
 
+  defp run_next_bytecode(_, %{error: error} = script) when is_binary(error) do
+    script
+  end
+
   defp run_next_bytecode(bytecode, %{cursor: cursor} = script) do
     case Map.get(bytecode, cursor) do
       nil ->
@@ -158,6 +164,22 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
 
     script
     |> put_stack(operation.(value1, value2))
+  end
+
+
+  defp handle(script, {:put_dict, key, :no_reference}) do
+    {script, to_put} = get_stack(script)
+    {script, dict} = get_stack(script)
+
+    dict = Map.put(dict, key, to_put)
+
+    script
+    |> put_stack(dict, :no_reference)
+  end
+
+  defp handle(script, {:dict, :no_reference}) do
+    script
+    |> put_stack(%{}, :no_reference)
   end
 
   defp handle(script, {:list, len}) do
@@ -321,8 +343,10 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
         {script, []}
       end
 
+    {script, kwargs} = get_stack(script)
     {script, callable} = get_stack(script)
-    {script, value} = callable.__struct__.call(script, callable, args)
+
+    {script, value} = callable.__struct__.call(script, callable, args, kwargs)
 
     script
     |> put_stack(value)
@@ -340,7 +364,12 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     raise "unknown bytecode: #{inspect(unknown)}"
   end
 
-  defp put_stack(%{stack: stack} = script, {:setattr, entity_id, name, value}) do
+  defp put_stack(%{stack: stack} = script, value, :no_reference) do
+    %{script | stack: [value | stack]}
+    |> debug("in stack: #{inspect(value)}")
+  end
+
+  defp put_stack(script, {:setattr, entity_id, name, value}) do
     value = Map.get(script.bound, {entity_id, name}, value)
     {script, value} = (references?(value) && reference(script, value)) || {script, value}
 

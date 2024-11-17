@@ -18,7 +18,7 @@ defmodule CosmicCoral.Scripting.Callable do
   @doc """
   Call the namespace.
   """
-  def call(script, %Callable{} = callable, args \\ []) do
-    apply(callable.module, callable.name, [script, callable.object, args, nil])
+  def call(script, %Callable{} = callable, args \\ [], kwargs \\ %{}) do
+    apply(callable.module, callable.name, [script, callable.object, args, kwargs])
   end
 end

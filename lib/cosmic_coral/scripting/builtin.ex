@@ -14,8 +14,8 @@ defmodule CosmicCoral.Scripting.Builtin do
   @doc """
   Call the builtin namespace.
   """
-  def call(script, %Builtin{name: name}, args \\ []) do
-    apply(__MODULE__, name, [script, args, nil])
+  def call(script, %Builtin{name: name}, args \\ [], kwargs \\ %{}) do
+    apply(__MODULE__, name, [script, args, kwargs])
   end
 
   def new_entity(script, _args, _kwargs) do
