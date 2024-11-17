@@ -4,7 +4,7 @@ defmodule CosmicCoral.Repo.Migrations.CreateEntities do
   def change do
     create table(:entities) do
       add :key, :text
-      add :location_id, references(:entities, on_delete: :nothing)
+      add :location_id, references(:entities, on_delete: :nilify_all)
 
       timestamps(type: :utc_datetime)
     end

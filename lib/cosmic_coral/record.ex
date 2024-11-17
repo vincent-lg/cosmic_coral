@@ -73,25 +73,32 @@ defmodule CosmicCoral.Record do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_entity(key \\ nil) do
+  def create_entity(opts \\ []) do
+    parent_id = (opts[:parent] && opts[:parent].id) || nil
+    location_id = (opts[:location] && opts[:location].id) || nil
+
     Repo.transaction(fn ->
       # Check if the key is present and unique
-      if key do
-        case Repo.get_by(Record.Key, key: key) do
+      if opts[:key] do
+        case Repo.get_by(Record.Key, key: opts[:key]) do
           nil -> :ok
           _ -> Repo.rollback("Key already exists")
         end
       end
 
       # Create the entity
-      entity_changeset = Record.Entity.changeset(%Record.Entity{}, %{})
+      attrs = %{location_id: location_id, parent_id: parent_id}
+      entity_changeset =
+        %Record.Entity{}
+        |> Record.Entity.changeset(attrs)
+
       case Repo.insert(entity_changeset) do
         {:ok, entity} ->
           # If a key is provided, create the associated key record
-          if key do
+          if opts[:key] do
             key_changeset =
               %Record.Key{}
-              |> Record.Key.changeset(%{key: key, entity_id: entity.id})
+              |> Record.Key.changeset(%{key: opts[:key], entity_id: entity.id})
 
             case Repo.insert(key_changeset) do
               {:ok, _entity_key} -> entity
@@ -108,7 +115,7 @@ defmodule CosmicCoral.Record do
     |> case do
       {:ok, entity} ->
         entity =
-          Entity.new(entity, key)
+          Entity.new(entity, opts[:key])
           |> cache_entity()
 
         {:ok, entity}

@@ -3,7 +3,7 @@ defmodule CosmicCoral.Repo.Migrations.CreateEntityParentId do
 
   def change do
     alter table(:entities) do
-      add :parent_id, references(:entities, on_delete: :nothing)
+      add :parent_id, references(:entities, on_delete: :nilify_all)
     end
 
     create index(:entities, [:parent_id])

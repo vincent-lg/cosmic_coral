@@ -6,11 +6,12 @@ defmodule CosmicCoral.Entity do
   """
 
   @enforce_keys [:id, :location_id]
-  defstruct [:id, :location_id, key: nil, attributes: %{}, methods: %{}]
+  defstruct [:id, :parent_id, :location_id, key: nil, attributes: %{}, methods: %{}]
 
   @type t() :: %{
           id: integer(),
           key: binary(),
+          parent_id: integer(),
           location_id: integer(),
           attributes: map(),
           methods: map()
@@ -24,6 +25,7 @@ defmodule CosmicCoral.Entity do
     %CosmicCoral.Entity{
       id: entity.id,
       key: key,
+      parent_id: entity.parent_id,
       location_id: entity.location_id,
       attributes: new_attributes(entity.attributes),
       methods: new_methods(entity.methods)
