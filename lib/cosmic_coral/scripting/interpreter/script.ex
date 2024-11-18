@@ -20,7 +20,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     debugger: nil
   ]
 
-  alias CosmicCoral.Scripting.{Builtin, Callable}
+  alias CosmicCoral.Scripting.Callable
   alias CosmicCoral.Scripting.Interpreter.{Debugger, Iterator, Script}
   alias CosmicCoral.Scripting.Namespace
 
@@ -296,10 +296,10 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   end
 
   defp handle(script, {:builtin, name}) do
-    name = Map.get(Builtin.valid(), name)
+    name = Map.get(Namespace.Builtin.functions(), name)
 
     script
-    |> put_stack(%Builtin{name: name})
+    |> put_stack(%Callable{module: Namespace.Builtin, object: nil, name: name})
   end
 
   defp handle(script, {:store, variable}) do
@@ -346,7 +346,7 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
     {script, kwargs} = get_stack(script)
     {script, callable} = get_stack(script)
 
-    {script, value} = callable.__struct__.call(script, callable, args, kwargs)
+    {script, value} = Callable.call(script, callable, args, kwargs)
 
     script
     |> put_stack(value)
@@ -454,7 +454,6 @@ defmodule CosmicCoral.Scripting.Interpreter.Script do
   end
 
   defp references?(value) when is_atom(value), do: false
-  defp references?(%Builtin{}), do: false
   defp references?(%Callable{}), do: false
   defp references?(value) when is_reference(value), do: false
   defp references?(value) when is_number(value), do: false
