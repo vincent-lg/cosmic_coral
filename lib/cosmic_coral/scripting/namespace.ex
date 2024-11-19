@@ -128,11 +128,13 @@ defmodule CosmicCoral.Scripting.Namespace do
     quote do
       @method to_string(unquote(name))
       def unquote(String.to_atom("m_#{name}"))(script, self, args, kwargs) do
-        {unquote_splicing(args)} =
+        {script, namespace} =
           validate(script, to_string(unquote(name)), unquote(constraints), args, kwargs)
+        namespace = Map.put(namespace, :self, self)
+        {unquote_splicing(args)} = {script, namespace}
 
         case script do
-          %Script{error: error} when is_binary(error) -> script
+          %Script{error: error} when is_binary(error) -> {script, nil}
           _ ->
             unquote(block)
         end
@@ -235,7 +237,7 @@ defmodule CosmicCoral.Scripting.Namespace do
   end
 
   defp check_arg_type(value, :any), do: value
-  defp check_arg_type(value, :string) when not is_binary(value), do: :error
+  defp check_arg_type(value, :str) when not is_binary(value), do: :error
   defp check_arg_type(value, :int) when not is_integer(value), do: :error
   defp check_arg_type(value, :float) when not is_float(value), do: :error
   defp check_arg_type(value, _), do: value
