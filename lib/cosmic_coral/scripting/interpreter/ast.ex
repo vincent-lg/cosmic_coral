@@ -43,7 +43,7 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
       end)
 
     code
-    |> read_asts(args)
+    |> read_asts(Enum.reverse(args))
     |> add({:call, length(args)})
   end
 
@@ -272,7 +272,7 @@ defmodule CosmicCoral.Scripting.Interpreter.AST do
       end)
 
     code
-    |> read_asts(args)
+    |> read_asts(Enum.reverse(args))
     |> add({:call, length(args)})
   end
 

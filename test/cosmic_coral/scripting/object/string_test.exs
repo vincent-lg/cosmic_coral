@@ -5,6 +5,118 @@ defmodule CosmicCoral.Scripting.StringTest do
 
   use CosmicCoral.ScriptingCase
 
+  describe "center" do
+    test "center an ASCII string with even alignment" do
+      script =
+        run("""
+        s = "ok".center(6)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "  ok  "
+    end
+
+    test "center an ASCII string with odd alignment" do
+      script =
+        run("""
+        s = "ok".center(7)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "   ok  "
+    end
+
+    test "center a non-ASCII string with even alignment" do
+      script =
+        run("""
+        s = "hé".center(6)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "  hé  "
+    end
+
+    test "center a non-ASCII string with odd alignment" do
+      script =
+        run("""
+        s = "hé".center(7)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "   hé  "
+    end
+
+    test "center an ASCII string with even alignment and a fill character" do
+      script =
+        run("""
+        s = "ok".center(6, "-")
+        """)
+
+      assert Script.get_variable_value(script, "s") == "--ok--"
+    end
+
+    test "center an ASCII string with odd alignment and a fill character" do
+      script =
+        run("""
+        s = "ok".center(7, ";")
+        """)
+
+      assert Script.get_variable_value(script, "s") == ";;;ok;;"
+    end
+
+    test "center a non-ASCII string with even alignment and a fill character" do
+      script =
+        run("""
+        s = "hé".center(6, ".")
+        """)
+
+      assert Script.get_variable_value(script, "s") == "..hé.."
+    end
+
+    test "center a non-ASCII string with odd alignment and a fill character" do
+      script =
+        run("""
+        s = "hé".center(7, "é")
+        """)
+
+      assert Script.get_variable_value(script, "s") == "éééhééé"
+    end
+  end
+
+  describe "ljust" do
+    test "left-justify an ASCII string without fill characters" do
+      script =
+        run("""
+        s = "ok".ljust(6)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "ok    "
+    end
+
+    test "left-justify a non-ASCII string" do
+      script =
+        run("""
+        s = "hé".ljust(6)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "hé    "
+    end
+
+    test "left-justify an ASCII string with a fill character" do
+      script =
+        run("""
+        s = "ok".ljust(6, "-")
+        """)
+
+      assert Script.get_variable_value(script, "s") == "ok----"
+    end
+
+    test "left-justify a non-ASCII string with a fill character" do
+      script =
+        run("""
+        s = "hé".ljust(6, "é")
+        """)
+
+      assert Script.get_variable_value(script, "s") == "hééééé"
+    end
+  end
+
   describe "lower" do
     test "affectation of lower on ASCCII letters" do
       script =
@@ -129,6 +241,44 @@ defmodule CosmicCoral.Scripting.StringTest do
         """)
 
       assert Script.get_variable_value(script, "s") == "maïs-;"
+    end
+  end
+
+  describe "rjust" do
+    test "right-justify an ASCII string without fill characters" do
+      script =
+        run("""
+        s = "ok".rjust(6)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "    ok"
+    end
+
+    test "right-justify a non-ASCII string" do
+      script =
+        run("""
+        s = "hé".rjust(6)
+        """)
+
+      assert Script.get_variable_value(script, "s") == "    hé"
+    end
+
+    test "right-justify an ASCII string with a fill character" do
+      script =
+        run("""
+        s = "ok".rjust(6, "-")
+        """)
+
+      assert Script.get_variable_value(script, "s") == "----ok"
+    end
+
+    test "right-justify a non-ASCII string with a fill character" do
+      script =
+        run("""
+        s = "hé".rjust(6, "é")
+        """)
+
+      assert Script.get_variable_value(script, "s") == "ééééhé"
     end
   end
 
