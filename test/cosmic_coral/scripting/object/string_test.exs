@@ -5,6 +5,44 @@ defmodule CosmicCoral.Scripting.StringTest do
 
   use CosmicCoral.ScriptingCase
 
+  describe "capitalize" do
+    test "capitalize an ASCII string in lowercase" do
+      script =
+        run("""
+        s = "hold".capitalize()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "Hold"
+    end
+
+    test "capitalize an ASCII string in uppercase" do
+      script =
+        run("""
+        s = "HOLD".capitalize()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "Hold"
+    end
+
+    test "capitalize a NON-ASCII string in lowercase" do
+      script =
+        run("""
+        s = "être et avoir".capitalize()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "Être et avoir"
+    end
+
+    test "capitalize a non-ASCII string in uppercase" do
+      script =
+        run("""
+        s = "ÊTRE ET AVOIR".capitalize()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "Être et avoir"
+    end
+  end
+
   describe "center" do
     test "center an ASCII string with even alignment" do
       script =
@@ -391,6 +429,44 @@ defmodule CosmicCoral.Scripting.StringTest do
         """)
 
       assert Script.get_variable_value(script, "s") == "maïs"
+    end
+  end
+
+  describe "title" do
+    test "title-case an ASCII string in lowercase" do
+      script =
+        run("""
+        s = "a christmas carol".title()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "A Christmas Carol"
+    end
+
+    test "title-case an ASCII string in uppercase" do
+      script =
+        run("""
+        s = "A CHRISTMAS CAROL".title()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "A Christmas Carol"
+    end
+
+    test "title-case a NON-ASCII string in lowercase" do
+      script =
+        run("""
+        s = "être et avoir".title()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "Être Et Avoir"
+    end
+
+    test "title-case a non-ASCII string in uppercase" do
+      script =
+        run("""
+        s = "ÊTRE ET AVOIR".title()
+        """)
+
+      assert Script.get_variable_value(script, "s") == "Être Et Avoir"
     end
   end
 

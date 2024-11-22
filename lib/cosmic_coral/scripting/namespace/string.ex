@@ -8,6 +8,10 @@ defmodule CosmicCoral.Scripting.Namespace.String do
 
   use CosmicCoral.Scripting.Namespace
 
+  defmet capitalize(script, namespace), [] do
+    {script, String.capitalize(namespace.self)}
+  end
+
   defmet center(script, namespace), [
     {:width, index: 0, type: :int},
     {:fill_char, index: 1, type: :str, default: " "}
@@ -51,6 +55,10 @@ defmodule CosmicCoral.Scripting.Namespace.String do
     {:chars, index: 0, type: :str, default: " \n"}
   ] do
     {script, rstrip(namespace.self, namespace.chars)}
+  end
+
+  defmet title(script, namespace), [] do
+    {script, title(namespace.self)}
   end
 
   defmet upper(script, self, _args, _kwargs) do
@@ -117,5 +125,12 @@ defmodule CosmicCoral.Scripting.Namespace.String do
       true ->
         list
     end
+  end
+
+  defp title(string) do
+    string
+    |> String.split(~r{\s}, include_captures: true)
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join()
   end
 end
