@@ -19,6 +19,13 @@ defmodule CosmicCoral.Scripting.Namespace.String do
     {script, adjust(namespace.self, namespace.width, namespace.fill_char, :center)}
   end
 
+  defmet count(script, namespace), [
+    {:sub, index: 0, type: :str},
+    {:start, index: 1, type: :int, default: 0},
+    {:end, index: 2, type: :int, default: nil}
+  ] do
+    {script, count(namespace.self, namespace.sub, namespace.start, namespace.end)}
+  end
   defmet ljust(script, namespace), [
     {:width, index: 0, type: :int},
     {:fill_char, index: 1, type: :str, default: " "}
@@ -72,7 +79,7 @@ defmodule CosmicCoral.Scripting.Namespace.String do
     adjust(string, width, fill_char, dir, String.length(string))
   end
 
-  defp adjust(string, width, fill, :left, cur) when cur >= width, do: string
+  defp adjust(string, width, _fill, :left, cur) when cur >= width, do: string
 
   defp adjust(string, width, fill, :right, cur) do
     String.duplicate(fill, width - cur) <> string
@@ -87,6 +94,42 @@ defmodule CosmicCoral.Scripting.Namespace.String do
     suffix = String.duplicate(fill, div(width - cur, 2))
 
     prefix <> string <> suffix
+  end
+
+  defp count(string, sub, start \\ 0, d_end \\ nil) do
+    length =
+      if d_end == nil do
+        String.length(string) - start
+      else
+        d_end - start
+      end
+
+    chunk =
+      string
+      |> String.slice(start, length)
+      |> IO.inspect(label: "intro")
+
+    {_, number} = count_chunks(chunk, sub, 0)
+
+    number
+  end
+
+  defp count_chunks("", _sub, number), do: {"", number}
+
+  defp count_chunks(chunk, sub, number) do
+    case String.starts_with?(chunk, sub) do
+      true ->
+        len = String.length(sub)
+
+        chunk
+        |> String.slice(len, String.length(chunk) - len)
+        |> count_chunks(sub, number + 1)
+
+      false ->
+        chunk
+        |> String.slice(1, String.length(chunk) - 1)
+        |> count_chunks(sub, number)
+    end
   end
 
   defp strip(string, chars) do
